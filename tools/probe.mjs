@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
+const p = await b.newPage({ viewport:{width:640,height:360} });
+const errs=[]; p.on('pageerror',e=>errs.push(String(e))); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+await p.goto('http://127.0.0.1:5199/tools/webgl-probe.html',{waitUntil:'networkidle'});
+await p.waitForFunction('window.__ready===true',null,{timeout:15000}).catch(()=>{});
+const gl = await p.evaluate(()=>window.__gl);
+const nonBlank = await p.evaluate(()=>{const c=document.getElementById('c');const g=c.getContext('webgl2')||c.getContext('webgl');const px=new Uint8Array(4);g.readPixels(320,180,1,1,g.RGBA,g.UNSIGNED_BYTE,px);return [...px].join(',')});
+await p.screenshot({path:'/tmp/claude-0/-home-user-shochan/f606e694-0187-5e03-8bd5-8b00d6733c1f/scratchpad/probe.png'});
+console.log('context:',gl,'| centerPixel:',nonBlank,'| errors:',errs.slice(0,3));
+await b.close();
