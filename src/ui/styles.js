@@ -98,7 +98,7 @@ export const CSS = /* css */`
 
 /* damage direction arcs */
 .hud-dmgdir { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-.hud-dmgdir svg { position: absolute; left: -130px; top: -130px; width: 260px; height: 260px; }
+.hud-dmgdir svg { position: absolute; left: -130px; top: -130px; width: 260px; height: 260px; opacity: 0; }
 @keyframes ddir { 0% { opacity: 0; transform: scale(.82); } 14% { opacity: 1; transform: scale(1.02); }
   45% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.08); } }
 .hud-dmgdir svg.go { animation: ddir 1.5s var(--ez) forwards; }

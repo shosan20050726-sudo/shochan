@@ -364,8 +364,8 @@ export default class Sky {
       tSky: { value: null },
       uSunDir: { value: this.sunDirection },
       uSunDiscColor: { value: new V3(1, 1, 1) },
-      uSunAngularRadius: { value: opts.sunAngularRadius ?? 0.013 },
-      uSunDiscIntensity: { value: opts.sunDiscIntensity ?? 26 },
+      uSunAngularRadius: { value: opts.sunAngularRadius ?? 0.021 },
+      uSunDiscIntensity: { value: opts.sunDiscIntensity ?? 34 },
       uGlowIntensity: { value: opts.sunGlowIntensity ?? 1.0 },
       uDither: { value: opts.skyDither ?? 0.0016 },
     };

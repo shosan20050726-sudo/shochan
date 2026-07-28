@@ -83,10 +83,15 @@ async function main() {
     await page.waitForTimeout(SETTLE);
     // Stage the transient feedback that only lives for a few hundred ms.
     // One software frame is ~250ms, so the wait has to outlast a frame.
-    await page.evaluate(() => {
+    const mark = () => page.evaluate(() => {
       window.__HUD?.ctx.bus.emit('ui:hitmarker', { isHeadshot: true, isKill: false });
     }).catch(() => {});
-    await page.waitForTimeout(380);
+    // Fired twice: a software frame is ~250ms, so whichever paint the shutter
+    // catches, the marker is mid-animation rather than already faded out.
+    await mark();
+    await page.waitForTimeout(300);
+    await mark();
+    await page.waitForTimeout(140);
 
     const main = resolve(OUT_DIR, `${label}.png`);
     await page.screenshot({ path: main, timeout: 120000 });

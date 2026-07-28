@@ -63,11 +63,9 @@ export default class Crosshair {
     this.mark.innerHTML = HITMARK[t];
     this.mark.style.color = col;
     this.mark.classList.remove('go', 'go-kill');
-    void this.mark.offsetWidth;
-    this.mark.classList.add(t === 'kill' ? 'go-kill' : 'go');
+    retrigger(this.mark, t === 'kill' ? 'go-kill' : 'go');
     if (t === 'kill' || t === 'shield') {
       this.burst.style.color = col;
-      this.burst.style.opacity = '1';
       retrigger(this.burst, 'burst');
     }
   }

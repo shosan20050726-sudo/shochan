@@ -368,7 +368,8 @@ vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
   float sparkle = p.g, damp = p.b;
 
   float tone = fbm01(uv * 5.0 + 7.0, vec2(5.0), 4, 0.5, S + 33.0);
-  vec3 sand = mix(vec3(0.575, 0.487, 0.348), vec3(0.690, 0.610, 0.462), tone);
+  tone = satf(tone * 0.7 + fbm01(uv * 17.0 + 3.0, vec2(17.0), 4, 0.5, S + 43.0) * 0.42);
+  vec3 sand = mix(vec3(0.512, 0.428, 0.300), vec3(0.660, 0.578, 0.428), tone);
   // mineral fines — dark iron/olivine streaks collect in the troughs
   float fines = smoothstep(0.55, 0.90, fbm01(uv * vec2(9.0, 14.0) + 21.0, vec2(9.0, 14.0), 4, 0.5, S + 37.0));
   sand = mix(sand, vec3(0.310, 0.266, 0.218), fines * damp * 0.62);
@@ -440,10 +441,10 @@ vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
   float S = uSeed;
   float band = p.g, lichen = p.b, fresh = p.a;
 
-  vec3 c0 = vec3(0.278, 0.266, 0.250);
-  vec3 c1 = vec3(0.410, 0.372, 0.318);
-  vec3 c2 = vec3(0.492, 0.432, 0.345);
-  vec3 c3 = vec3(0.198, 0.188, 0.186);
+  vec3 c0 = vec3(0.232, 0.222, 0.208);
+  vec3 c1 = vec3(0.342, 0.310, 0.264);
+  vec3 c2 = vec3(0.412, 0.360, 0.288);
+  vec3 c3 = vec3(0.162, 0.154, 0.152);
   vec3 base = mix(c0, c1, smoothstep(0.0, 0.45, band));
   base = mix(base, c2, smoothstep(0.45, 0.75, band));
   base = mix(base, c3, smoothstep(0.80, 1.0, band));
@@ -456,7 +457,7 @@ vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
   base = mix(base, vec3(0.16, 0.16, 0.18), smoothstep(0.16, 0.03, sp.x) * step(0.93, sp.z) * 0.7);
 
   // freshly chipped faces are lighter and cleaner than the weathered skin
-  base = mix(base, min(base * 1.30 + 0.05, vec3(1.0)), fresh * 0.35);
+  base = mix(base, min(base * 1.26 + 0.035, vec3(1.0)), fresh * 0.35);
 
   // lichen prefers convex, sun-facing surfaces
   float lm = lichen * satf(0.35 + curv * 5.0);
@@ -671,8 +672,8 @@ vec4 matPattern(vec2 uv){
   h += leaf * 0.13;
   h += fbm(uv * 200.0, vec2(200.0), 3, 0.5, S + 23.0) * 0.02;
 
-  float dry = smoothstep(0.44, 0.86, fbm01(uv * 4.0 + 51.0, vec2(4.0), 4, 0.5, S + 29.0));
-  return vec4(satf(h), satf(blade), bid, satf(dry * 0.75 + bald * 0.55));
+  float dry = smoothstep(0.60, 0.94, fbm01(uv * 4.0 + 51.0, vec2(4.0), 4, 0.5, S + 29.0));
+  return vec4(satf(h), satf(blade), bid, satf(dry * 0.80 + bald * 0.45));
 }
 
 vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
@@ -693,7 +694,7 @@ vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
 
   vec3 gc = mix(gDark, gMid, smoothstep(0.0, 0.5, bid));
   gc = mix(gc, gLite, smoothstep(0.5, 1.0, bid));
-  gc = mix(gc, mix(gDry, gYel, bid), dry * 0.70);
+  gc = mix(gc, mix(gDry, gYel, bid), dry * 0.80);
   // per-blade shading along its length keeps the mat from going poster-flat
   gc *= mix(0.72, 1.12, fbm01(uv * 90.0, vec2(90.0), 3, 0.5, S + 37.0));
 
@@ -865,60 +866,79 @@ vec4 matORM(vec2 uv, vec4 p, float curv, float ao){
 `;
 
 const PLASTIC = /* glsl */`
+// Injection-moulded parts are made of REGIONS: polished gate faces, a matte
+// moulded-in grain panel, a parting line where the tool halves met. A single
+// uniform noise over the whole part is what makes plastic look like nothing.
+float plasticZone(vec2 uv){
+  vec2 w = warp(uv * 3.0, vec2(3.0), 0.30, 3, uSeed + 7.0);
+  return smoothstep(0.46, 0.54, fbm01(w, vec2(3.0), 3, 0.5, uSeed + 7.0));
+}
+
 vec4 matPattern(vec2 uv){
   float S = uSeed;
-  float peel = fbm(uv * 40.0, vec2(40.0), 4, 0.5, S);            // orange peel
+  float peel  = fbm(uv * 40.0, vec2(40.0), 4, 0.5, S);            // orange peel
   float micro = fbm(uv * 380.0, vec2(380.0), 3, 0.5, S + 3.0);
 
-  // moulded stipple, confined to textured zones like a real injection part
-  float stipple = vnoise(uv * 280.0, vec2(280.0), S + 5.0);
-  vec4 sv = voronoi(uv * 200.0, vec2(200.0), 1.0, S + 6.0);
-  stipple = mix(stipple, smoothstep(0.45, 0.08, sv.x), 0.6);
-  float zone = smoothstep(0.48, 0.58, fbm01(uv * 3.0, vec2(3.0), 3, 0.5, S + 7.0));
+  // moulded grain: fine pebbled cells, sharp-edged where the tool was etched
+  vec4 sv = voronoi(uv * 190.0, vec2(190.0), 1.0, S + 6.0);
+  float stipple = smoothstep(0.46, 0.10, sv.x);
+  vec4 sv2 = voronoi(uv * 420.0, vec2(420.0), 1.0, S + 8.0);
+  stipple = satf(stipple * 0.75 + smoothstep(0.42, 0.12, sv2.x) * 0.45);
+  float zone = plasticZone(uv);
 
   vec4 pl = splitAxis(uv.x, 2.0, 0.20, S + 9.0);
-  float parting = smoothstep(0.008, 0.0, pl.z);
+  float parting = smoothstep(0.006, 0.0, pl.z);
   float sink = smoothstep(0.55, 0.90, fbm01(uv * 6.0 + 13.0, vec2(6.0), 3, 0.5, S + 11.0));
   float scr = scratches(uv, 11.0, 0.55, 0.0020, S + 13.0);
-  float scuff = smoothstep(0.62, 0.92, fbm01(uv * 20.0, vec2(20.0), 4, 0.5, S + 17.0));
-  float dust = smoothstep(0.60, 0.95, fbm01(uv * 30.0 + 5.0, vec2(30.0), 3, 0.5, S + 19.0));
+  float scuff = smoothstep(0.58, 0.90, fbm01(uv * 20.0, vec2(20.0), 4, 0.5, S + 17.0));
+  float dust = smoothstep(0.55, 0.92, fbm01(uv * 30.0 + 5.0, vec2(30.0), 3, 0.5, S + 19.0));
 
   float h = 0.60;
-  h += peel * 0.022;
-  h += micro * 0.012;
-  h += stipple * zone * 0.085;
-  h += parting * 0.030;
-  h -= sink * 0.018;
-  h -= scr * 0.035;
+  h += peel * 0.020;
+  h += micro * 0.010;
+  h += stipple * zone * 0.150;                 // the grain has real depth
+  h -= smoothstep(0.0, 0.04, zone) * smoothstep(0.10, 0.04, zone) * 0.05;  // etched step
+  h += parting * 0.045;
+  h -= sink * 0.022;
+  h -= scr * 0.040;
   h -= scuff * 0.010;
 
   return vec4(satf(h), scuff, dust, zone * stipple);
 }
 
 vec3 matAlbedo(vec2 uv, vec4 p, float curv, float ao){
-  float scuff = p.g, dust = p.b;
-  vec3 col = vec3(0.612, 0.625, 0.645);
-  col *= mix(0.94, 1.05, fbm01(uv * 12.0, vec2(12.0), 3, 0.5, uSeed + 23.0));
-  // glass-filled speckle
-  col = mix(col, col * 0.80, smoothstep(0.80, 1.0, vnoise(uv * 300.0, vec2(300.0), uSeed + 29.0)) * 0.5);
-  float scr = scratches(uv, 11.0, 0.55, 0.0020, uSeed + 13.0);
-  col = mix(col, min(col * 1.20 + 0.06, vec3(1.0)), scr * 0.55);   // stress-whitened gouges
-  col = mix(col, col * 0.90 + vec3(0.03, 0.028, 0.025), dust * 0.5);
-  col = mix(col, col * 0.86, scuff * 0.42);
-  col = mix(col, col * vec3(0.80, 0.82, 0.86), p.a * 0.30);   // moulded zones read darker
-  col *= mix(1.0, 0.62, satf(-curv * 6.0));
-  col *= mix(1.0, 0.86, 1.0 - ao);
+  float S = uSeed;
+  float scuff = p.g, dust = p.b, tex = p.a;
+  float zone = plasticZone(uv);
+
+  vec3 col = vec3(0.492, 0.505, 0.525);
+  col *= mix(0.90, 1.08, fbm01(uv * 12.0, vec2(12.0), 3, 0.5, S + 23.0));
+  // glass-filled speckle in the resin
+  col = mix(col, col * 0.74, smoothstep(0.78, 1.0, vnoise(uv * 300.0, vec2(300.0), S + 29.0)) * 0.55);
+  // the matte grain panel reads darker than the polished areas
+  col *= mix(1.0, 0.80, zone);
+  col = mix(col, col * 0.86, tex * 0.55);
+
+  float scr = scratches(uv, 11.0, 0.55, 0.0020, S + 13.0);
+  col = mix(col, min(col * 1.45 + 0.09, vec3(1.0)), scr * 0.65);    // stress-whitened gouges
+  col = mix(col, col * 0.86 + vec3(0.030, 0.028, 0.024), dust * 0.55);
+  col = mix(col, col * 0.84, scuff * 0.45);
+  col *= mix(1.0, 0.52, satf(-curv * 6.0));
+  col *= mix(1.0, 0.80, 1.0 - ao);
   return col;
 }
 
 vec4 matORM(vec2 uv, vec4 p, float curv, float ao){
   float scuff = p.g, dust = p.b, tex = p.a;
-  float r = 0.28;
-  r += tex * 0.50;                       // the stippled zones are matte
-  r += scuff * 0.26 + dust * 0.18;
+  float zone = plasticZone(uv);
+  // Polished tool face vs etched grain: a big roughness split is the whole
+  // reason a moulded part reads as moulded.
+  float r = mix(0.22, 0.72, zone);
+  r += tex * 0.16;
+  r += scuff * 0.22 + dust * 0.16;
   r += fbm(uv * 60.0, vec2(60.0), 3, 0.5, uSeed + 31.0) * 0.05;
   r -= satf(curv * 4.0) * 0.06;
-  return vec4(ao, clamp(r, 0.10, 1.0), 0.0, 1.0);
+  return vec4(ao, clamp(r, 0.08, 1.0), 0.0, 1.0);
 }
 `;
 

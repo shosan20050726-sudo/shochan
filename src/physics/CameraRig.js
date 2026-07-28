@@ -144,7 +144,7 @@ export class CameraRig {
     // Crouch/slide transitions are smoothed; step-ups are absorbed by
     // stepOffset so climbing stairs never punches the camera upward.
     this._eyeSmooth += (this.eyeHeight - this._eyeSmooth) * damp(14, dt);
-    this.stepOffset -= this.stepOffset * damp(16, dt);
+    this.stepOffset -= this.stepOffset * damp(19, dt);
     if (Math.abs(this.stepOffset) < 0.0008) this.stepOffset = 0;
 
     // --- view bob (driven by real speed, not a fixed timer) --------------

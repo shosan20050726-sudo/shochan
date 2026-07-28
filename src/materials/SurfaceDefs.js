@@ -110,7 +110,7 @@ export const SURFACE_DEFS = {
   },
   plastic: {
     color: 0xb8bcc2, roughness: 0.45, metalness: 0.00,
-    res: 0.5, seed: 181, normalStrength: 0.85, normalScale: 0.70,
+    res: 0.5, seed: 181, normalStrength: 1.15, normalScale: 1.00,
     aoRadius: 3.0, aoStrength: 1.8, curvGain: 3.0, aoIntensity: 0.8,
     detail: { scale: 21, strength: 0.40, selfScale: 9, selfStrength: 0.35, fadeStart: 2.5, fadeEnd: 12 },
     triScale: 1.0,

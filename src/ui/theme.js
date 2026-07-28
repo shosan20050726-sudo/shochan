@@ -114,12 +114,21 @@ export function setClass(node, cls, on) {
   if (node[k] !== on) { node[k] = on; node.classList.toggle(cls, !!on); }
 }
 
-/** Restart a CSS animation on an element (class-toggle + reflow read). */
+/**
+ * Restart a CSS animation on an element.
+ *
+ * NOTE: the usual `void node.offsetWidth` reflow trick silently does nothing on
+ * SVG elements (SVGElement has no offsetWidth), which would leave hit markers
+ * and damage arcs animating exactly once per page load. getBoundingClientRect()
+ * flushes layout for both HTML and SVG, and the explicit cancel/play covers the
+ * case where the style flush is coalesced away.
+ */
 export function retrigger(node, cls) {
   node.classList.remove(cls);
-  // eslint-disable-next-line no-unused-expressions
-  void node.offsetWidth;
+  void node.getBoundingClientRect().width;
   node.classList.add(cls);
+  const anims = node.getAnimations?.();
+  if (anims) for (const a of anims) { a.cancel(); a.play(); }
 }
 
 /** Crisp canvas sizing for the current DPR, returns the scale used. */

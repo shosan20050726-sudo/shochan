@@ -878,7 +878,7 @@ export default class PlayerSystem {
     this.groundNormal.copy(this._stepRes.groundNormal);
     this.groundSurface = this._stepRes.groundSurface;
     this.onGround = true;
-    this.rig.stepOffset = clamp(this.rig.stepOffset + rise, -step * 1.6, step * 1.6);
+    this.rig.stepOffset = clamp(this.rig.stepOffset + rise, -step * 1.2, step * 1.2);
     return true;
   }
 
