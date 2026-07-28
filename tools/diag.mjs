@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const OUT = resolve(ROOT, 'shots', 'diag');
-const POSE = { pos: [70, 52, 110], look: [0, 4, -20], fov: 68 };
+const POSE = { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 };
 
 /** Each variant mutates the live scene, then we shoot the identical pose. */
 const VARIANTS = [
@@ -25,6 +25,30 @@ const VARIANTS = [
     const csm = window.__ENGINE.get('postfx')?.lighting?.csm
              ?? window.__ENGINE.get('lighting')?.csm;
     csm?.lights?.forEach((l) => { l.castShadow = false; });
+  }],
+  ['k-nopost', () => {
+    // Engine falls back to a plain forward render when postfx exposes no
+    // render(); this isolates the post chain from the scene itself.
+    const pf = window.__ENGINE.get('postfx');
+    if (pf) pf.render = undefined;
+  }],
+  ['j-shadowmapoff', () => {
+    // castShadow=false leaves the CSM shader branch compiled in and still
+    // sampling; this actually recompiles the materials without shadow code.
+    const e = window.__ENGINE;
+    e.renderer.shadowMap.enabled = false;
+    e.scene.traverse((o) => {
+      const m = o.material; if (!m) return;
+      (Array.isArray(m) ? m : [m]).forEach((x) => { x.needsUpdate = true; });
+    });
+  }],
+  ['h-nomotes', () => {
+    window.__ENGINE.scene.traverse((o) => { if (o.name === 'vfx:motes') o.visible = false; });
+  }],
+  ['i-noparticles', () => {
+    window.__ENGINE.scene.traverse((o) => {
+      if (o.name === 'vfx:motes' || String(o.name).startsWith('vfx:')) o.visible = false;
+    });
   }],
   ['c-noenv', () => { window.__ENGINE.scene.environment = null; }],
   ['d-nofog', () => { window.__ENGINE.scene.fog = null; }],

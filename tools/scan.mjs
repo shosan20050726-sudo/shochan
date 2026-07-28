@@ -16,8 +16,9 @@ const out = await p.evaluate(() => {
     if(!o.isMesh && !o.isPoints && !o.isSprite) return;
     o.geometry?.computeBoundingSphere?.();
     const r=o.geometry?.boundingSphere?.radius ?? 0;
-    if(r < 60) return;
-    const m=Array.isArray(o.material)?o.material[0]:o.material;
+    const m0=Array.isArray(o.material)?o.material[0]:o.material;
+    if(r < 60 && !m0?.transparent) return;
+    const m=m0;
     rows.push({name:o.name||o.type, r:Math.round(r), transparent:!!m?.transparent,
       opacity:m?.opacity, blending:m?.blending, depthWrite:m?.depthWrite,
       mat:m?.type, visible:o.visible, parent:o.parent?.name||''});

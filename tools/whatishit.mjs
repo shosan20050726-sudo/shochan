@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
 const ROOT = '/home/user/shochan';
-const POSE = { pos: [6, 0.7, 18], look: [2, 14, -14], fov: 88 };   // 05-lowangle
+const POSE = { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 };  // 01-vista
 
 const server = await createServer({
   root: ROOT, logLevel: 'error', server: { port: 0, host: '127.0.0.1' },
@@ -37,26 +37,28 @@ const out = await page.evaluate((p) => {
   const rc = new THREE.Raycaster();
   const rows = [];
   // Sample the upper half of the frame, where the wood appears.
-  const pts = [[0, 0.8], [-0.6, 0.6], [0.6, 0.6], [0, 0.3], [0, 0.0], [-0.8, 0.85]];
+  const pts = [[0.75, 0.75], [0.9, 0.5], [-0.85, -0.6], [-0.5, -0.8], [0.3, 0.2], [-0.2, 0.5]];
   for (const [x, y] of pts) {
     rc.setFromCamera(new THREE.Vector2(x, y), e.camera);
     rc.far = 5000;
     const hits = rc.intersectObjects(e.scene.children, true);
-    const h = hits.find((k) => k.object.visible && k.object.type === 'Mesh');
+    const vis = hits.filter((k) => k.object.visible && k.object.type === 'Mesh');
+    const h = vis[0];
+    const stack = vis.slice(0, 3).map((k) => `${k.object.name}@${Math.round(k.distance)}`).join(' > ');
     rows.push({
       ndc: `${x},${y}`,
       obj: h ? (h.object.name || h.object.type) : '(sky/nothing)',
       dist: h ? Math.round(h.distance) : -1,
       mat: h ? (Array.isArray(h.object.material) ? 'multi' : (h.object.material?.name || h.object.material?.type)) : '',
       surface: h ? (h.object.userData?.surface || '') : '',
-      scale: h ? `${h.object.scale.x.toFixed(2)},${h.object.scale.y.toFixed(2)},${h.object.scale.z.toFixed(2)}` : '',
+      stack,
     });
   }
   return rows;
 }, POSE);
 
 for (const r of out) {
-  console.log(`HIT ndc=${r.ndc.padEnd(9)} dist=${String(r.dist).padStart(5)} obj=${r.obj} mat=${r.mat} surface=${r.surface} scale=${r.scale}`);
+  console.log(`HIT ndc=${r.ndc.padEnd(9)} dist=${String(r.dist).padStart(5)} obj=${r.obj} mat=${r.mat} surface=${r.surface} stack=${r.stack}`);
 }
 
 await browser.close();
