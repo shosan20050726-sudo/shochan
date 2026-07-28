@@ -49,10 +49,10 @@ export default class UISystem {
       downed: false, bleedTime: 30, bleedTotal: 30,
       speed: 0, grounded: true, ads: false, bloom: 0, overEnemy: false,
       weapon: {
-        name: 'R-301 CARBINE', kind: 'ar', mag: 28, magMax: 28, reserve: 180,
+        name: 'CR-56 CARBINE', kind: 'ar', mag: 28, magMax: 28, reserve: 180,
         ammo: 'light', mode: 'AUTO', reloading: false, reloadProgress: 0, reloadDur: 2.3,
       },
-      slots: [{ name: 'R-301', active: true }, { name: 'PEACEKEEPER', active: false }],
+      slots: [{ name: 'CR-56', active: true }, { name: 'TS-12', active: false }],
       abilities: {
         tactical: { cd: 0, cdMax: 20, charges: 2, maxCharges: 2 },
         ultimate: { charge: 0 },

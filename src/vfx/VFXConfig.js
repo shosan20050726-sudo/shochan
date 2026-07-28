@@ -76,11 +76,14 @@ export const VCFG = {
     height: p(V.ring?.height, CFG.ring?.height ?? 260),
     segments: p(V.ring?.segments, 128),
     rings: p(V.ring?.rings, 22),
-    opacity: p(V.ring?.opacity, 1.0),
+    // At full opacity the wall behaves like a fog bank: it sits between the
+    // camera and the map and flattens the aerial perspective behind it. It
+    // should read as an energy curtain you can see the world through.
+    opacity: p(V.ring?.opacity, 0.42),
     colorA: p(V.ring?.colorA, 0x4a1a7a),        // deep violet body
     colorB: p(V.ring?.colorB, 0xff37c8),        // hot magenta filaments
     colorC: p(V.ring?.colorC, 0x9ce8ff),        // cyan-white hot core
-    nearFade: p(V.ring?.nearFade, 26),          // translucent within this range
+    nearFade: p(V.ring?.nearFade, 85),          // translucent within this range
     scroll: p(V.ring?.scroll, 0.14),
   },
 

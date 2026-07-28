@@ -48,11 +48,11 @@ export default class DemoDriver {
     bus.emit('ui:player', { name: 'V-07 WRAITHLINE', level: 118 });
     bus.emit('ui:vitals', { health: 71, healthMax: 100, shield: 78, shieldMax: 100 });
     bus.emit('ui:weapon', {
-      name: 'R-301 CARBINE', kind: 'ar', mag: 21, magMax: 28, reserve: 184,
+      name: 'CR-56 CARBINE', kind: 'ar', mag: 21, magMax: 28, reserve: 184,
       ammo: 'light', mode: 'AUTO',
     });
     bus.emit('ui:slots', [
-      { name: 'R-301', active: true }, { name: 'PEACEKEEPER', active: false },
+      { name: 'CR-56', active: true }, { name: 'TS-12', active: false },
     ]);
     bus.emit('ui:squad', [
       { name: 'ECHO-4', health: 88, healthMax: 100, shield: 42, shieldMax: 100, fighting: true, x: 26, z: 12, fx: -0.4, fz: -0.9 },
