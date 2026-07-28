@@ -99,26 +99,51 @@ export default class VFXSystem {
     this.engine.add('tracer', caps.tracer,
       { additive: true, soft: false, stretch: 1, intensity: 4.0 }, tex.streak);
 
-    scene.add(this.engine.group);
+    // Debug hook so a bad component can be bisected without a rebuild:
+    //   window.__VFX_DISABLE = 'ring,motes,decals'
+    const off = String(globalThis.__VFX_DISABLE || '').split(',').map((s) => s.trim());
+    const enabled = (n) => !off.includes(n);
 
-    this.decals = new DecalPool(caps.decal);
-    const decalMesh = this.decals.build?.(tex.decal, this.engine.shared.uTime);
-    if (decalMesh) scene.add(decalMesh);
+    if (enabled('particles')) scene.add(this.engine.group);
 
-    this.motes = new DustMotes(caps.motes, VCFG.seed ^ 0x2B);
-    const moteMesh = this.motes.build?.(tex.glow, this.engine.shared);
-    if (moteMesh) scene.add(moteMesh);
+    if (enabled('decals')) {
+      this.decals = new DecalPool(caps.decal);
+      const decalMesh = this.decals.build?.(tex.decal, this.engine.shared.uTime);
+      if (decalMesh) scene.add(decalMesh);
+    }
 
-    this.ring = new RingWall();
-    const ringMesh = this.ring.build?.(this.engine.shared);
-    if (ringMesh) scene.add(ringMesh);
+    if (enabled('motes')) {
+      this.motes = new DustMotes(caps.motes, VCFG.seed ^ 0x2B);
+      const moteMesh = this.motes.build?.(tex.glow, this.engine.shared);
+      if (moteMesh) scene.add(moteMesh);
+    }
+
+    // The ring is built lazily on the first stage event rather than at init.
+    // It only exists during a match, and keeping it out of the scene until
+    // then also keeps a known defect off the critical path: with the wall
+    // present from boot, a uniform upload throws inside the world render and
+    // (before the engine loop was hardened) killed the frame loop outright.
+    // Isolated to this component; the shaders' declared uniforms all match
+    // what is provided, so the cause is still open.
+    this._ringEnabled = enabled('ring');
 
     const on = (type, fn) => this._unsub.push(bus.on(type, fn));
     on(EV.IMPACT, (e) => this.impact(e));
     on(EV.SHOT_FIRED, (e) => this.muzzle(e));
     on('vfx:tracer', (e) => this.tracer(e));
     on(EV.ENTITY_KILLED, (e) => this.impact({ ...e, surface: 'flesh', scale: 2.2 }));
-    on(EV.RING_STAGE, (e) => this.ring?.setStage?.(e));
+    on(EV.RING_STAGE, (e) => this._onRingStage(e));
+  }
+
+  /** Build the ring wall on demand, the first time a stage is announced. */
+  _onRingStage(e) {
+    if (!this._ringEnabled) return;
+    if (!this.ring) {
+      this.ring = new RingWall();
+      const mesh = this.ring.build?.(this.engine.shared);
+      if (mesh) this.ctx.scene.add(mesh);
+    }
+    this.ring.setStage?.(e);
   }
 
   /* ------------------------------------------------------------ effects -- */

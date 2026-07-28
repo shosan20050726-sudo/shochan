@@ -101,12 +101,30 @@ export class Engine {
     if (this.running) return;
     this.running = true;
     this.clock.last = performance.now();
+    this.frameErrors = [];
     const loop = (now) => {
       if (!this.running) return;
-      this._frame(now);
+      // Reschedule FIRST. If _frame throws, an exception escaping this
+      // callback would otherwise skip the next requestAnimationFrame and
+      // permanently kill the loop -- one bad system bricking the whole game
+      // with no visible cause beyond a frozen image.
       this._raf = requestAnimationFrame(loop);
+      try {
+        this._frame(now);
+      } catch (err) {
+        this._reportFrameError(err);
+      }
     };
     this._raf = requestAnimationFrame(loop);
+  }
+
+  /** Log each distinct frame error once; a per-frame throw would flood. */
+  _reportFrameError(err) {
+    const key = String(err?.stack || err).split('\n').slice(0, 3).join('|');
+    if (this._seenErrors ??= new Set(), this._seenErrors.has(key)) return;
+    this._seenErrors.add(key);
+    this.frameErrors.push(String(err?.stack || err));
+    console.error('[Engine] frame error (loop continues):', err);
   }
 
   stop() {

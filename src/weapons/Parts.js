@@ -159,6 +159,13 @@ export class Assembly {
     _m.premultiply(_m2);
     geo.applyMatrix4(_m);
 
+    // mergeGeometries requires every input to agree on whether it is indexed.
+    // RoundedBoxGeometry is non-indexed while the cylinder/sphere/torus/lathe
+    // primitives are indexed, so a bin mixing the two silently failed to merge
+    // and fell back to one mesh per primitive. Normalising here keeps each
+    // (node, material) bin down to a single draw call.
+    if (geo.index) geo = geo.toNonIndexed();
+
     const key = `${node}|${mat}`;
     let bin = this.bins.get(key);
     if (!bin) { bin = { node, mat, geos: [] }; this.bins.set(key, bin); }
