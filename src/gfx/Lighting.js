@@ -253,6 +253,24 @@ export default class LightingRig {
     };
     mat.onBeforeCompile = chain;
     mat.userData.__csmChain = chain;
+
+    // A material that defines a custom program cache key must fold the CSM
+    // state into it. three.js uses that key to decide whether two materials
+    // can share one compiled program, so a key that ignores the cascade
+    // defines lets a pre-CSM program be reused for a CSM-patched material.
+    // The cascade uniforms then do not match the shader actually running,
+    // which shows up as broad mis-shadowed bands on exactly the surfaces
+    // that set a constant key (the terrain splat, the surface patches).
+    if (!mat.userData.__csmKeyWrapped) {
+      const prevKey = mat.customProgramCacheKey;
+      const sig = `csm${csm.cascades}:${csm.fade ? 1 : 0}`;
+      mat.customProgramCacheKey = function () {
+        const base = typeof prevKey === 'function' ? prevKey.call(this) : '';
+        return `${base}|${sig}`;
+      };
+      mat.userData.__csmKeyWrapped = true;
+    }
+
     mat.needsUpdate = true;
   }
 

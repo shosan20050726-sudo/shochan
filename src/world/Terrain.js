@@ -35,9 +35,13 @@ export function makeHeightField(seed) {
 
     // Large landform + a ridged component so the skyline has spines, not blobs.
     const broad = fbm2D(n1, x * 0.00215, z * 0.00215, 5);
-    const ridged = 1.0 - Math.abs(fbm2D(n2, x * 0.0034, z * 0.0034, 4)) * 2.4;
+    // Gain of 2.4 drove this well past -1, so the clamp below was doing most
+    // of the work and cut flat-bottomed ravines into the dune faces. They read
+    // as dark veils laid over the slope rather than as landform. Lower gain
+    // and a shallower floor keep the ridge spines while losing the gouges.
+    const ridged = 1.0 - Math.abs(fbm2D(n2, x * 0.0034, z * 0.0034, 4)) * 1.55;
 
-    let h = bowl * (30 + broad * 58 + Math.max(ridged, -0.4) * 26);
+    let h = bowl * (30 + broad * 58 + Math.max(ridged, -0.18) * 23);
 
     // Basin floor: gentle, walkable undulation only.
     h += (1 - bowl) * (fbm2D(n1, x * 0.0075, z * 0.0075, 3) * 6.2 - 1.4);
@@ -337,14 +341,29 @@ export function buildTerrain(field, material) {
   const uvs = new Float32Array(n * n * 2);
 
   const nrm = new THREE.Vector3();
+
+  /** Half the gap to this sample's neighbours, i.e. the local vertex spacing. */
+  const spacing = (arr, k) => {
+    const a = arr[Math.max(k - 1, 0)];
+    const b = arr[Math.min(k + 1, arr.length - 1)];
+    return Math.abs(b - a) * 0.5;
+  };
+
   for (let j = 0; j < n; j++) {
     const z = axis[j];
+    const dz = spacing(axis, j);
     for (let i = 0; i < n; i++) {
       const x = axis[i];
       const o = (j * n + i);
       const y = field.height(x, z);
       verts[o * 3] = x; verts[o * 3 + 1] = y; verts[o * 3 + 2] = z;
-      field.normal(x, z, nrm, Math.max(1.2, Math.abs(x) > MAP_RADIUS ? 24 : 1.8));
+      // The finite-difference step for the shading normal must match the LOCAL
+      // vertex spacing. The axis is dense inside the playspace and then jumps
+      // to a coarse skirt, so a step chosen from x alone is wrong for a vertex
+      // like (0, 1400): small in x, but far out on the coarse skirt in z. The
+      // normal then samples height detail the mesh cannot represent, which
+      // shows up as broad shading bands running along one axis.
+      field.normal(x, z, nrm, Math.max(1.2, spacing(axis, i), dz));
       norms[o * 3] = nrm.x; norms[o * 3 + 1] = nrm.y; norms[o * 3 + 2] = nrm.z;
       uvs[o * 2] = x; uvs[o * 2 + 1] = z;
     }

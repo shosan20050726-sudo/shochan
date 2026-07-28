@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import Engine from './core/Engine.js';
 import Input from './core/Input.js';
 
@@ -47,6 +48,7 @@ async function boot() {
 
   // Expose for the screenshot/critic harness and for debugging.
   window.__ENGINE = engine;
+  window.__THREE = THREE;   // diagnostics harness
   window.__LOADED = [];
   window.__FAILED = [];
 
