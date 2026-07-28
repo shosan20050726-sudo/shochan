@@ -113,9 +113,19 @@ export const CFG = {
     cascadeSplits: [0.06, 0.22, 1.0],
     shadowDistance: 220,
     exposure: 1.06,
-    bloomStrength: 0.42,
+    bloomStrength: 0.30,
     bloomRadius: 0.55,
-    bloomThreshold: 0.92,
+    // Above 1.0 so only genuinely emissive things bloom. Below it, every
+    // sunlit surface glows and polished metal on the viewmodel clips to white.
+    bloomThreshold: 1.12,
+
+    // The viewmodel sits ~30 cm from the eye, so lighting it at sun intensity
+    // blows out every polished part of the gun. These are fractions of the
+    // sun, deliberately well under it.
+    viewmodelKey: 0.34,
+    viewmodelFill: 0.10,
+    viewmodelRim: 0.18,
+    viewmodelEnvIntensity: 0.45,
     ssaoRadius: 0.55,
     ssaoIntensity: 0.9,
     motionBlurStrength: 0.42,
