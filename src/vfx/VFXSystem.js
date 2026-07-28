@@ -139,6 +139,11 @@ export default class VFXSystem {
   /** Build the ring wall on demand, the first time a stage is announced. */
   _onRingStage(e) {
     if (!this._ringEnabled) return;
+    // The HUD demo synthesises match events so the interface can be
+    // screenshotted populated. Those are UI fixtures, not a running match --
+    // staging a kilometre-wide wall in the world off the back of them put a
+    // translucent slab across every review frame.
+    if (e?.demo) return;
     if (!this.ring) {
       this.ring = new RingWall();
       const mesh = this.ring.build?.(this.engine.shared);

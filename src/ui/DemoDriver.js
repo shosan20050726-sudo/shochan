@@ -64,6 +64,7 @@ export default class DemoDriver {
       ultimate: { charge: 0.78 },
     });
     bus.emit(EV.RING_STAGE, {
+      demo: true,
       stage: this.stage, phase: 'close', time: 47, total: 60,
       center: { x: -34, z: -18 }, radius: 148, nextRadius: 74,
     });
@@ -223,6 +224,7 @@ export default class DemoDriver {
       this.stage = Math.min(6, this.stage + 1);
       const st = this.ctx.cfg.ring.stages[Math.min(this.stage, this.ctx.cfg.ring.stages.length) - 1];
       bus.emit(EV.RING_STAGE, {
+        demo: true,
         stage: this.stage, phase: 'close', time: st.closeTime, total: st.closeTime,
         center: { x: this.px + (rng() - 0.5) * 60, z: this.pz + (rng() - 0.5) * 60 },
         radius: st.radius * 0.55, nextRadius: st.radius * 0.3,
