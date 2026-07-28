@@ -27,30 +27,32 @@ const OUT = resolve(ROOT, 'shots', `review-${round}`);
  * `setup` runs before the shot and may drive gameplay systems.
  */
 const FRAMES = [
+  // Poses are anchored to the POI pads in src/world/Layout.js. Keep them there
+  // when the map changes, and let the free-space guard below catch the rest.
   {
     id: '01-vista',
     note: 'Map scale, atmospheric perspective, sky, distant silhouette read',
-    pose: { pos: [70, 52, 110], look: [0, 4, -20], fov: 68 },
+    pose: { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 },
   },
   {
     id: '02-street',
-    note: 'Eye level. Texture detail, shadow contact, mid-ground composition',
-    pose: { pos: [14, 2.5, 40], look: [8, 2.0, -40], fov: 96 },
+    note: 'Eye level in Souk Plaza. Texture detail, shadow contact, mid-ground',
+    pose: { pos: [46, 2.4, 42], look: [-4, 2.0, -6], fov: 96 },
   },
   {
     id: '03-material',
-    note: 'Contact range material read. Detail tiling, normal maps, edge wear',
-    pose: { pos: [2.6, 1.6, 2.6], look: [0, 1.4, 0], fov: 50 },
+    note: 'Contact range on the Hangar 7 wall. Detail tiling, normals, edge wear',
+    pose: { pos: [-56, 1.7, -116], look: [-56, 1.5, -148], fov: 50 },
   },
   {
     id: '04-sky',
-    note: 'Sun, bloom, scattering, horizon haze',
-    pose: { pos: [0, 18, 0], look: [140, 46, 140], fov: 78 },
+    note: 'Sun, bloom, scattering, horizon haze — above the basin, clear of props',
+    pose: { pos: [0, 44, 0], look: [170, 74, 130], fov: 78 },
   },
   {
     id: '05-lowangle',
-    note: 'Low hero angle. Silhouette against sky, specular response',
-    pose: { pos: [6, 0.7, 18], look: [2, 14, -14], fov: 88 },
+    note: 'Low hero angle onto the Relay Spire. Silhouette against sky, specular',
+    pose: { pos: [148, 1.4, 24], look: [196, 58, 6], fov: 88 },
   },
   {
     id: '06-gameplay',
@@ -137,6 +139,39 @@ async function main() {
           e.camera.lookAt(...p.look);
           e.camera.fov = p.fov; e.camera.updateProjectionMatrix();
         }, f.pose).catch(() => {});
+
+        // Guard: a pose authored against an older version of the map can end
+        // up buried inside geometry, which fills the frame with the inside of
+        // a prop and reads like a rendering bug. Lift the camera until it is
+        // in free space and report it, rather than silently reviewing a shot
+        // taken from inside a crate.
+        const fix = await page.evaluate((p) => {
+          const e = window.__ENGINE;
+          const world = e.get('world');
+          if (!world?.collision?.isFree) return null;
+          const cam = e.camera;
+          const probe = cam.position.clone();
+          if (world.collision.isFree(probe, 0.35, 0.7)) return null;
+          for (let i = 1; i <= 40; i++) {
+            probe.y = p.pos[1] + i * 0.75;
+            if (world.collision.isFree(probe, 0.35, 0.7)) {
+              cam.position.copy(probe);
+              cam.lookAt(...p.look);
+              cam.updateMatrixWorld(true);
+              return { liftedTo: Number(probe.y.toFixed(2)) };
+            }
+          }
+          return { liftedTo: null };
+        }, f.pose).catch(() => null);
+        if (fix) {
+          const msg = fix.liftedTo == null
+            ? `POSE ${f.id}: camera inside geometry and no free space found above`
+            : `POSE ${f.id}: camera was inside geometry, lifted to y=${fix.liftedTo}`;
+          console.warn('  !', msg);
+          report.poseWarnings ??= [];
+          report.poseWarnings.push(msg);
+        }
+
         await waitFrames(page, 5);
       }
       if (f.setup) await f.setup(page).catch(() => {});

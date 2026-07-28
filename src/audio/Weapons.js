@@ -154,7 +154,9 @@ export const WEAPON_SPECS = {
 const CLASS_KEYS = [
   ['sniper', /snip|dmr|kraber|longbow|bolt|marks/i],
   ['shotgun', /shot|peace|mastiff|eva|buck|slug/i],
-  ['lmg', /lmg|spitfire|devot|rampage|machine|mg\b/i],
+  // \bmg\b, not mg\b: the latter also matches the tail of "smg", and lmg is
+  // tested before smg, so every SMG id was classified as a light machine gun.
+  ['lmg', /lmg|spitfire|devot|rampage|machine|\bmg\b/i],
   ['smg', /smg|alter|r99|prowler|volt|car\b|mp\d/i],
   ['energy', /energ|plasma|laser|havoc|charge|ion|beam|arc/i],
   ['pistol', /pistol|p2020|re45|wingman|revolv|sidearm|handgun/i],

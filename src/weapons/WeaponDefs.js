@@ -9,8 +9,8 @@ import { lerp } from './MathKit.js';
  * rounds-per-minute. Damage is per bullet before the headshot/leg multipliers
  * in CFG.combat.
  *
- * The ids are deliberately conventional (r301, flatline, r99, spitfire,
- * peacekeeper, longbow, wingman) because the audio system's `weaponClass()`
+ * The ids are deliberately conventional (…_carbine, …_assault, …_smg, …_lmg,
+ * …_shotgun, …_marksman, …_revolver) because the audio system's `weaponClass()`
  * regex-matches them to pick the right gunshot synthesis.
  */
 
@@ -88,8 +88,8 @@ function def(o) {
 export const WEAPONS = {
 
   /* ============================ ASSAULT RIFLE ============================ */
-  r301: def({
-    id: 'r301', name: 'R-301 CARBINE', kind: 'ar', ammoType: 'light',
+  cr56_carbine: def({
+    id: 'cr56_carbine', name: 'CR-56 CARBINE', kind: 'ar', ammoType: 'light',
     fireMode: 'auto', rpm: 810,
     damage: 14, hitscan: true, maxRange: 500,
     falloff: { start: 42, end: 130, far: 0.70 },
@@ -115,8 +115,8 @@ export const WEAPONS = {
     hip: { pos: [0.128, -0.132, -0.285], rot: [0.028, 0.175, -0.055] },
   }),
 
-  flatline: def({
-    id: 'flatline', name: 'VK-47 FLATLINE', kind: 'ar', ammoType: 'heavy',
+  hx9_assault: def({
+    id: 'hx9_assault', name: 'HX-9 ASSAULT', kind: 'ar', ammoType: 'heavy',
     fireMode: 'auto', rpm: 600,
     damage: 19, hitscan: true, maxRange: 500,
     falloff: { start: 34, end: 110, far: 0.66 },
@@ -142,8 +142,8 @@ export const WEAPONS = {
   }),
 
   /* ================================= SMG ================================= */
-  r99: def({
-    id: 'r99', name: 'R-99 SMG', kind: 'smg', ammoType: 'light',
+  vx4_smg: def({
+    id: 'vx4_smg', name: 'VX-4 SMG', kind: 'smg', ammoType: 'light',
     fireMode: 'auto', rpm: 1080,
     damage: 11, hitscan: true, maxRange: 380,
     falloff: { start: 22, end: 70, far: 0.58 },
@@ -168,8 +168,8 @@ export const WEAPONS = {
   }),
 
   /* ================================= LMG ================================= */
-  spitfire: def({
-    id: 'spitfire', name: 'M600 SPITFIRE', kind: 'lmg', ammoType: 'heavy',
+  m77_lmg: def({
+    id: 'm77_lmg', name: 'M77 SUPPRESSOR', kind: 'lmg', ammoType: 'heavy',
     fireMode: 'auto', rpm: 540,
     damage: 18, hitscan: true, maxRange: 550,
     falloff: { start: 46, end: 150, far: 0.74 },
@@ -195,8 +195,8 @@ export const WEAPONS = {
   }),
 
   /* =============================== SHOTGUN =============================== */
-  peacekeeper: def({
-    id: 'peacekeeper', name: 'PEACEKEEPER', kind: 'shotgun', ammoType: 'shotgun',
+  ts12_shotgun: def({
+    id: 'ts12_shotgun', name: 'TS-12 BREACHER', kind: 'shotgun', ammoType: 'shotgun',
     fireMode: 'semi', rpm: 63,               // ~1.05 s between shells
     damage: 9, pellets: 11, hitscan: true, maxRange: 120,
     falloff: { start: 12, end: 42, far: 0.42 },
@@ -221,8 +221,8 @@ export const WEAPONS = {
   }),
 
   /* ================================ SNIPER =============================== */
-  longbow: def({
-    id: 'longbow', name: 'LONGBOW DMR', kind: 'sniper', ammoType: 'sniper',
+  mk8_marksman: def({
+    id: 'mk8_marksman', name: 'MK-8 MARKSMAN', kind: 'sniper', ammoType: 'sniper',
     fireMode: 'semi', rpm: 78,
     damage: 55, hitscan: false, projectileSpeed: 470, projectileDrop: 5.2,
     maxRange: 900,
@@ -247,8 +247,8 @@ export const WEAPONS = {
   }),
 
   /* ================================ PISTOL =============================== */
-  wingman: def({
-    id: 'wingman', name: 'WINGMAN', kind: 'pistol', ammoType: 'heavy',
+  ra6_revolver: def({
+    id: 'ra6_revolver', name: 'RA-6 REVOLVER', kind: 'pistol', ammoType: 'heavy',
     fireMode: 'semi', rpm: 156,
     damage: 45, hitscan: false, projectileSpeed: 330, projectileDrop: 6.5,
     maxRange: 600,
@@ -276,7 +276,7 @@ export const WEAPONS = {
 export const WEAPON_IDS = Object.keys(WEAPONS);
 
 /** Default two-slot loadout. */
-export const DEFAULT_LOADOUT = ['r301', 'peacekeeper'];
+export const DEFAULT_LOADOUT = ['cr56_carbine', 'ts12_shotgun'];
 
 /** Seconds between rounds. */
 export function fireInterval(d) { return 60 / Math.max(1, d.rpm); }
