@@ -20,7 +20,10 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
 const disable = process.argv[2] || '';
-await page.addInitScript((d) => { window.__VFX_DISABLE = d; }, disable);
+const ringPart = process.argv[3] || 'both';
+await page.addInitScript(([d, r]) => {
+  window.__VFX_DISABLE = d; window.__RING_PART = r; window.__UI_DEMO = true;
+}, [disable, ringPart]);
 
 const errs = [];
 page.on('pageerror', (e) => errs.push(String(e?.stack || e)));
@@ -34,7 +37,7 @@ const f1 = await page.evaluate(() => window.__ENGINE?.clock?.frame ?? -1);
 await page.waitForTimeout(45000);
 const f2 = await page.evaluate(() => window.__ENGINE?.clock?.frame ?? -1);
 
-console.log(`[disable=${disable||'none'}] frame after ready: ${f1} -> after 45s: ${f2}  ${f2 > f1 ? 'LOOP ALIVE' : 'LOOP DEAD'}`);
+console.log(`[disable=${disable||'none'} ring=${ringPart}] frame after ready: ${f1} -> after 45s: ${f2}  ${f2 > f1 ? 'LOOP ALIVE' : 'LOOP DEAD'}`);
 console.log('errors:');
 for (const e of [...new Set(errs)].slice(0, 6)) {
   console.log('  ' + e.split('\n').slice(0, 5).join('\n  '));

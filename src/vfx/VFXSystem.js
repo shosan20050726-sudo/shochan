@@ -84,6 +84,12 @@ export default class VFXSystem {
     const tex = this.textures;
     const caps = VCFG.caps;
 
+    // The dust-mote shader takes the sun in WORLD space for its forward-scatter
+    // term, while the particle engine only publishes the view-space direction.
+    // Without this the uniform resolves to undefined, and three throws while
+    // uploading it -- which aborts the whole world render, not just the motes.
+    this.engine.shared.uSunWorld = { value: new THREE.Vector3(0.42, 0.78, 0.32).normalize() };
+
     // Additive layers read as hot light; smoke is alpha-blended and soft so it
     // does not cut a hard line where it intersects geometry.
     this.engine.add('spark', caps.spark,
@@ -118,13 +124,8 @@ export default class VFXSystem {
       if (moteMesh) scene.add(moteMesh);
     }
 
-    // The ring is built lazily on the first stage event rather than at init.
-    // It only exists during a match, and keeping it out of the scene until
-    // then also keeps a known defect off the critical path: with the wall
-    // present from boot, a uniform upload throws inside the world render and
-    // (before the engine loop was hardened) killed the frame loop outright.
-    // Isolated to this component; the shaders' declared uniforms all match
-    // what is provided, so the cause is still open.
+    // Built lazily on the first stage event: the ring only exists once a match
+    // is closing, so there is no reason for it to sit in the scene before then.
     this._ringEnabled = enabled('ring');
 
     const on = (type, fn) => this._unsub.push(bus.on(type, fn));
@@ -287,6 +288,13 @@ export default class VFXSystem {
     const cam = ctx.camera;
     shared.uNear.value = cam.near;
     shared.uFar.value = cam.far;
+
+    // Keep the atmosphere lit by the sun the sky is actually drawing.
+    const sunDir = ctx.engine.get('postfx')?.sky?.sunDirection;
+    if (sunDir) {
+      shared.uSunWorld.value.copy(sunDir);
+      shared.uSunView.value.copy(sunDir).transformDirection(cam.matrixWorldInverse);
+    }
 
     const player = ctx.engine.get('player');
     if (player && this.ring) {
