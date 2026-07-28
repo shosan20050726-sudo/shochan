@@ -74,6 +74,23 @@ const FRAMES = [
   },
 ];
 
+/**
+ * Wait for N *rendered frames*, not wall-clock time.
+ *
+ * Under SwiftShader a full-scene frame can take many seconds, so a fixed
+ * sleep may not cover even one frame. Temporal effects (motion blur, TAA)
+ * reproject from the previous frame's matrices, so screenshotting before the
+ * camera teleport has been flushed through the history smears the whole
+ * image and looks like a rendering bug when it is purely a capture artifact.
+ */
+async function waitFrames(page, n = 4, timeout = 300000) {
+  const start = await page.evaluate(() => window.__ENGINE?.clock?.frame ?? 0).catch(() => 0);
+  await page.waitForFunction(
+    ([s, k]) => (window.__ENGINE?.clock?.frame ?? 0) >= s + k,
+    [start, n], { timeout, polling: 250 },
+  ).catch(() => {});
+}
+
 async function main() {
   mkdirSync(OUT, { recursive: true });
 
@@ -92,6 +109,8 @@ async function main() {
   });
 
   const page = await browser.newPage({ viewport: { width: W, height: H } });
+  // SwiftShader rasterises on the CPU; a full-scene frame can take minutes.
+  page.setDefaultTimeout(300000);
   await page.addInitScript(() => { window.__UI_DEMO = true; });
 
   const errors = [];
@@ -107,7 +126,7 @@ async function main() {
 
     report.loaded = await page.evaluate(() => window.__LOADED || []).catch(() => []);
     report.failed = await page.evaluate(() => window.__FAILED || []).catch(() => []);
-    await page.waitForTimeout(3000);
+    await waitFrames(page, 4);
 
     for (const f of FRAMES) {
       if (f.pose) {
@@ -118,12 +137,13 @@ async function main() {
           e.camera.lookAt(...p.look);
           e.camera.fov = p.fov; e.camera.updateProjectionMatrix();
         }, f.pose).catch(() => {});
-        await page.waitForTimeout(900);
+        await waitFrames(page, 5);
       }
       if (f.setup) await f.setup(page).catch(() => {});
+      await waitFrames(page, 3);
 
       const path = resolve(OUT, `${f.id}.png`);
-      await page.screenshot({ path });
+      await page.screenshot({ path, timeout: 300000 });
       report.frames.push({ id: f.id, note: f.note, path });
     }
 
