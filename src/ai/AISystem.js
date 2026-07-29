@@ -49,6 +49,13 @@ const _n = new THREE.Vector3();
 const CORPSE_SLOTS = 6;
 /** Bot simulation rate. See fixedUpdate for why this is not the physics rate. */
 const SIM_STEP = 1 / 40;
+/** Showcase framing: preferred depths, and the range placement may use. */
+const SHOW_DIST = [7.0, 10.5, 5.2];
+const SHOW_LATERAL = [-2.2, 0.6, 2.8];
+/** Yaw applied to each showcase bot's aim so the rifle is not end-on. */
+const SHOW_AIM_YAW = [0.62, 0, -0.95];
+const SHOW_MIN = 3.4;
+const SHOW_MAX = 26;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export default class AISystem {
@@ -819,6 +826,13 @@ export default class AISystem {
    * Put a squad in front of the camera in a readable pose: one holding a
    * firing stance, one walking across frame, one crouched behind the others.
    * Called by tools/review.mjs before the gameplay frame is captured.
+   *
+   * Placement is *searched*, not assumed. The default spawn sits about 1.9 m
+   * from a hangar wall, so anything dropped at a fixed distance down the
+   * camera axis ends up behind it — visible only as a pair of legs under the
+   * wall's bottom edge. Instead: probe a fan of directions for open ground,
+   * pick the three roomiest that are far enough apart to read as a group, and
+   * then verify line of sight to each bot's chest before committing.
    */
   debugPresent() {
     this.showcase = true;
@@ -839,34 +853,33 @@ export default class AISystem {
     }
     _fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
 
+    const dirs = this._openDirections(_eye);
     const squad = this.squads[0];
-    const layout = [
-      { ang: -0.30, dist: 8.5, mode: 'aim' },
-      { ang: 0.05, dist: 11.5, mode: 'walk' },
-      { ang: 0.34, dist: 7.5, mode: 'crouch' },
-    ];
+    const modes = ['aim', 'walk', 'crouch'];
 
     for (let i = 0; i < squad.members.length; i++) {
       const bot = squad.members[i];
-      const L = layout[i % layout.length];
-      const ca = Math.cos(L.ang), sa = Math.sin(L.ang);
-      const dx = _fwd.x * ca - _fwd.z * sa;
-      const dz = _fwd.x * sa + _fwd.z * ca;
+      const slotDir = dirs[i % Math.max(1, dirs.length)];
+      const mode = modes[i % modes.length];
+      if (!slotDir) { bot.despawn(); this.renderer.hide(bot.slot); continue; }
 
-      // Do not park them inside a wall: shorten until the line is clear.
-      let dist = L.dist;
-      if (this.collision?.ready) {
-        const h = this.collision.raycastRef(_eye.x, _eye.y, _eye.z, dx, 0, dz, L.dist + 2);
-        if (h) dist = Math.max(3.6, h.distance - 1.4);
-      }
+      const dx = slotDir.dx, dz = slotDir.dz;
+      // Stagger the group in depth, but never past what the direction affords.
+      const want = SHOW_DIST[i % SHOW_DIST.length];
+      let dist = Math.min(want, slotDir.open - 1.5);
+      if (dist < SHOW_MIN) dist = Math.min(want, Math.max(SHOW_MIN, slotDir.open - 0.8));
 
-      const x = _eye.x + dx * dist;
-      const z = _eye.z + dz * dist;
-      // Probe from the player's own feet height, not their eye: starting the
-      // downward ray three metres up can find an overhang instead of a floor.
-      const y = this._groundAt(x, z, this.W.player.position.y) + 0.005;
+      // In a corridor the fan may only find one usable bearing; spreading the
+      // squad sideways off it keeps three separate silhouettes rather than
+      // three figures stacked on the same screen column. The offset is a
+      // *preference*, not a commitment — the search below drops it rather than
+      // park a bot behind a wall.
+      const lateral = dirs.length >= 3 ? 0 : SHOW_LATERAL[i % SHOW_LATERAL.length];
+      const spot = this._findVisibleSpot(_eye, dx, dz, dist, lateral);
+      if (!spot) { bot.despawn(); this.renderer.hide(bot.slot); continue; }
+      const x = spot.x, y = spot.y, z = spot.z;
+
       const face = Math.atan2(-(_eye.x - x), -(_eye.z - z));
-
       bot.spawn(x, y, z, face);
       const reg = this.registry.byId.get(bot.id);
       if (reg) { reg.alive = true; reg.scale = bot.scale; }
@@ -874,13 +887,21 @@ export default class AISystem {
       bot.frozen = true;
       bot.hasContact = false;
       bot.awareness = 0;
-      bot.wantCrouch = L.mode === 'crouch';
-      bot.ready = L.mode === 'walk' ? 0.35 : 1;
-      // Look at the camera, slightly above the eye so the head reads.
+      bot.wantCrouch = mode === 'crouch';
+      bot.ready = mode === 'walk' ? 0.35 : 1;
+      // Cover an angle *past* the camera rather than staring down the lens: a
+      // rifle aimed straight at the viewer is fully foreshortened and reads as
+      // nothing at all. Yawing the aim gives the weapon a silhouette.
       _v.set(_eye.x - x, (_eye.y + 0.05) - (y + 1.55 * bot.scale), _eye.z - z).normalize();
+      const off = SHOW_AIM_YAW[i % SHOW_AIM_YAW.length];
+      if (off) {
+        const ca = Math.cos(off), sa = Math.sin(off);
+        const ax = _v.x * ca - _v.z * sa, az = _v.x * sa + _v.z * ca;
+        _v.set(ax, _v.y, az).normalize();
+      }
       bot.aim.copy(_v);
 
-      if (L.mode === 'walk') {
+      if (mode === 'walk') {
         // Cross the frame at a shallow angle rather than square-on, so the
         // body still reads three-quarter and the rifle is not slung fully
         // across the chest.
@@ -898,6 +919,112 @@ export default class AISystem {
       this.renderer.writeBody(bot.slot, bot.pose, bot.gait.facing, bot.gait.aim, bot.gait.gunPos, bot.scale);
     }
     this.renderer.flush();
+  }
+
+  /**
+   * Fan of horizontal directions in front of the eye, each scored by how much
+   * open ground it has. Probed at eye height *and* chest height, because the
+   * thing most likely to be in the way is a wall whose bottom edge is above
+   * knee height — exactly the case that made a squad render as three pairs of
+   * boots.
+   * @returns {Array<{dx,dz,open}>} up to three well-separated directions,
+   *   roomiest first, or [] when there is no collision world to probe.
+   */
+  _openDirections(eye) {
+    const out = this._dirScratch ||= [];
+    out.length = 0;
+    const c = this.collision;
+    if (!c?.ready) {
+      for (const ang of [-0.30, 0.06, 0.34]) {
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        out.push({ dx: _fwd.x * ca - _fwd.z * sa, dz: _fwd.x * sa + _fwd.z * ca, open: SHOW_MAX });
+      }
+      return out;
+    }
+
+    // Stay inside the *actual* frustum. camera.fov is vertical, so the
+    // horizontal half-angle needs the aspect folded in, and the whole fan is
+    // biased left because the viewmodel owns the right third of the frame.
+    const cam = this.ctx?.camera;
+    const vfov = ((cam?.fov ?? CFG.camera?.fov ?? 96) * Math.PI) / 180;
+    const aspect = cam?.aspect > 0.1 ? cam.aspect : 16 / 9;
+    const halfH = Math.atan(Math.tan(vfov * 0.5) * aspect);
+    const maxL = halfH * 0.88, maxR = halfH * 0.15;
+
+    const pool = this._fanScratch ||= [];
+    pool.length = 0;
+    const FAN = 29;
+    for (let i = 0; i < FAN; i++) {
+      const ang = -maxL + ((maxL + maxR) * i) / (FAN - 1);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      const dx = _fwd.x * ca - _fwd.z * sa;
+      const dz = _fwd.x * sa + _fwd.z * ca;
+      let open = SHOW_MAX;
+      for (let h = 0; h < 2; h++) {
+        const oy = eye.y - (h === 0 ? 0 : 0.40);
+        const hit = c.raycastRef(eye.x, oy, eye.z, dx, 0, dz, SHOW_MAX);
+        if (hit && hit.distance < open) open = hit.distance;
+      }
+      // Room matters, but only up to a point; past ~18 m a bot is too small to
+      // judge anyway, so prefer a roomy direction nearer the centre of frame.
+      pool.push({ ang, dx, dz, open, score: Math.min(open, 18) - Math.abs(ang) * 2.2 });
+    }
+
+    // Best first, then greedily keep directions that are far enough apart to
+    // read as three separate figures rather than one clump.
+    pool.sort((a, b) => b.score - a.score);
+    for (const cand of pool) {
+      if (out.length >= 3) break;
+      if (cand.open < SHOW_MIN + 1.2) continue;
+      let ok = true;
+      for (const chosen of out) if (Math.abs(chosen.ang - cand.ang) < 0.19) { ok = false; break; }
+      if (ok) out.push(cand);
+    }
+    if (!out.length && pool.length) out.push(pool[0]);   // corridor: take the best we have
+    // Left to right, so the depth stagger below reads as a formation.
+    out.sort((a, b) => a.ang - b.ang);
+    return out;
+  }
+
+  /**
+   * Search (lateral offset x distance) along a bearing for ground that is
+   * unoccluded from the eye and roomy enough to stand in. Returns the first
+   * spot that passes both tests, preferring the requested framing.
+   */
+  _findVisibleSpot(eye, dx, dz, wantDist, lateral) {
+    const perpX = -dz, perpZ = dx;
+    const lats = this._latScratch ||= [0, 0, 0, 0, 0];
+    lats[0] = lateral; lats[1] = lateral * 0.45; lats[2] = 0;
+    lats[3] = -lateral * 0.5; lats[4] = -lateral;
+    const out = this._spotScratch ||= { x: 0, y: 0, z: 0 };
+    const c = this.collision;
+
+    for (let li = 0; li < lats.length; li++) {
+      for (let d = wantDist; d >= 2.8; d -= 0.9) {
+        const x = eye.x + dx * d + perpX * lats[li];
+        const z = eye.z + dz * d + perpZ * lats[li];
+        const y = this._groundAt(x, z, this.W.player.position.y) + 0.005;
+        if (!this._visibleFrom(eye, x, y + 1.35, z)) continue;
+        if (c?.ready) {
+          _v.set(x, y + 0.02, z);
+          if (!c.isFree(_v, AI.move.radius * 0.9, AI.move.height * 0.9, 0.06)) continue;
+        }
+        out.x = x; out.y = y; out.z = z;
+        return out;
+      }
+    }
+    return null;
+  }
+
+  /** True when nothing solid sits between the eye and a world point. */
+  _visibleFrom(eye, x, y, z) {
+    const c = this.collision;
+    if (!c?.ready) return true;
+    _dir.set(x - eye.x, y - eye.y, z - eye.z);
+    const d = _dir.length();
+    if (d < 0.2) return false;
+    _dir.multiplyScalar(1 / d);
+    return !c.raycastRef(eye.x, eye.y, eye.z, _dir.x, _dir.y, _dir.z, d - 0.35);
   }
 
   /** Advance a bot's locomotion as if it had been walking, without physics. */

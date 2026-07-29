@@ -43,7 +43,11 @@ const PELVIS_H = 1.00;
  * skate.
  */
 const STAND_K = 0.885;
-const CROUCH_K = 0.60;
+/**
+ * A combat crouch, not a squat. At 0.60 the pelvis dropped so far that the
+ * knees had nowhere to go but sideways and the pose read as a sumo stance.
+ */
+const CROUCH_K = 0.76;
 const DOWN_K = 0.40;
 
 /** Furthest a foot may sit from its hip, laterally, before the leg locks. */
@@ -292,7 +296,7 @@ export class Gait {
         const hip = i === 0 ? J.HIP_L : J.HIP_R;
         setJoint(pose, foot, f.x, f.y + 0.09, f.z);
         // Knees always break forward, and outward a touch when crouched.
-        const outward = (i === 0 ? -1 : 1) * (s.crouch ? 0.45 : 0.12);
+        const outward = (i === 0 ? -1 : 1) * (s.crouch ? 0.11 : 0.12);
         solveIK2(pose, hip, knee, foot, LEN.thigh, LEN.shin,
           _fwd.x + _right.x * outward, 0.08, _fwd.z + _right.z * outward);
       }
@@ -329,9 +333,12 @@ export class Gait {
     const lowered = 1 - ready;
     _p.set(cx, cy, cz);
 
-    const outX = 0.08 + lowered * 0.04;
+    // Held out far enough that the receiver clears the chest plate and the
+    // arms actually extend; the left-hand reach below is what caps how far
+    // forward this can go before the support arm locks straight.
+    const outX = 0.11 + lowered * 0.04;
     const upY = -0.04 - lowered * 0.20 - this.downedT * 0.16;
-    const fwdZ = 0.18 - lowered * 0.03 - this.recoil * 0.05;
+    const fwdZ = 0.22 - lowered * 0.03 - this.recoil * 0.05;
 
     this.gunPos.set(
       _p.x + _aimR.x * outX + _aimU.x * upY + _aim.x * fwdZ,
@@ -346,11 +353,22 @@ export class Gait {
 
     // Right hand on the grip, left on the handguard.
     setJoint(pose, J.HAND_R, this.gunPos.x, this.gunPos.y, this.gunPos.z);
-    const lh = 0.26 - lowered * 0.04;
-    setJoint(pose, J.HAND_L,
-      this.gunPos.x + _aim.x * lh + _aimU.x * 0.035,
-      this.gunPos.y + _aim.y * lh + _aimU.y * 0.035,
-      this.gunPos.z + _aim.z * lh + _aimU.z * 0.035);
+    const lh = 0.22 - lowered * 0.04;
+    let lx = this.gunPos.x + _aim.x * lh + _aimU.x * 0.035;
+    let ly = this.gunPos.y + _aim.y * lh + _aimU.y * 0.035;
+    let lz = this.gunPos.z + _aim.z * lh + _aimU.z * 0.035;
+    // Never ask the support arm for more than it has. Aiming hard to one side
+    // or dropping to low ready both stretch this reach, and a locked-straight
+    // arm is the tell that a rig is being driven past its limits.
+    const sl = J.SHOULDER_L * 3;
+    const dxl = lx - pose[sl], dyl = ly - pose[sl + 1], dzl = lz - pose[sl + 2];
+    const dl = Math.hypot(dxl, dyl, dzl);
+    const maxL = (LEN.upperArm + LEN.foreArm) * 0.94;
+    if (dl > maxL) {
+      const k = maxL / dl;
+      lx = pose[sl] + dxl * k; ly = pose[sl + 1] + dyl * k; lz = pose[sl + 2] + dzl * k;
+    }
+    setJoint(pose, J.HAND_L, lx, ly, lz);
 
     // Elbows: right flares out, left tucks under. Classic rifle stance.
     solveIK2(pose, J.SHOULDER_R, J.ELBOW_R, J.HAND_R, LEN.upperArm, LEN.foreArm,

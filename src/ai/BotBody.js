@@ -85,23 +85,30 @@ function merge(list) {
 
 const HALF = { arm: LEN.upperArm * 0.5, fore: LEN.foreArm * 0.5, thigh: LEN.thigh * 0.5, shin: LEN.shin * 0.5 };
 
-/** Helmet + skull + neck. Origin at the HEAD joint. */
+/**
+ * Helmet + skull + neck. Origin at the HEAD joint.
+ *
+ * Sized deliberately small: at the original dimensions the helmet was about
+ * 1/5.6 of standing height against a human's 1/7.5, which is the single thing
+ * that made the whole figure read as a toy. It also sat low enough to swallow
+ * the collar, so the head appeared welded to the shoulders with no neck.
+ */
 function buildHelmet() {
   return merge([
-    box(0.195, 0.222, 0.222, 0.075, 0, 0.012, 0.004),
-    box(0.216, 0.150, 0.238, 0.072, 0, 0.076, 0.008),
-    box(0.120, 0.090, 0.072, 0.028, 0, 0.030, 0.116),
-    box(0.126, 0.096, 0.100, 0.036, 0, -0.074, -0.056),
-    box(0.056, 0.046, 0.092, 0.018, 0.101, 0.056, 0.010),
-    capsule(0.058, 0.075, 0, -0.158, 0.006),
+    box(0.170, 0.194, 0.196, 0.066, 0, 0.026, 0.004),
+    box(0.190, 0.132, 0.210, 0.064, 0, 0.084, 0.008),
+    box(0.106, 0.080, 0.064, 0.025, 0, 0.042, 0.103),
+    box(0.112, 0.084, 0.090, 0.032, 0, -0.052, -0.050),
+    box(0.050, 0.040, 0.082, 0.016, 0.089, 0.064, 0.010),
+    capsule(0.052, 0.085, 0, -0.150, 0.006),
   ]);
 }
 
 /** Emissive optics band — the enemy read at distance. */
 function buildVisor() {
   return merge([
-    box(0.156, 0.062, 0.046, 0.022, 0, 0.004, -0.098),
-    box(0.030, 0.028, 0.030, 0.010, 0.104, 0.058, -0.030),
+    box(0.138, 0.054, 0.042, 0.019, 0, 0.020, -0.088),
+    box(0.026, 0.024, 0.026, 0.009, 0.092, 0.066, -0.026),
   ]);
 }
 
@@ -116,7 +123,8 @@ function buildChest() {
     box(0.276, 0.300, 0.146, 0.055, 0, -0.102, 0.156),
     box(0.062, 0.098, 0.300, 0.022, -0.116, 0.046, 0.004),
     box(0.062, 0.098, 0.300, 0.022, 0.116, 0.046, 0.004),
-    box(0.186, 0.086, 0.186, 0.045, 0, 0.122, 0.005),
+    // Collar kept low and narrow so the neck capsule above it stays visible.
+    box(0.168, 0.068, 0.168, 0.040, 0, 0.104, 0.005),
   ]);
 }
 
@@ -153,18 +161,23 @@ function buildForeArm() {
   ]);
 }
 
+/**
+ * Thighs are the easiest thing on a humanoid to get wrong: at radius 0.086 the
+ * two capsules together were wider than the pelvis and read as inflated shorts.
+ * A real thigh is roughly 0.07 m in radius at the hip.
+ */
 function buildThigh() {
   return merge([
-    capsule(0.086, Math.max(0.02, LEN.thigh - 0.172), 0, 0, 0),
-    box(0.146, 0.120, 0.150, 0.045, 0, -HALF.thigh + 0.085, -0.008),
+    capsule(0.070, Math.max(0.02, LEN.thigh - 0.140), 0, 0, 0),
+    box(0.112, 0.100, 0.114, 0.034, 0, -HALF.thigh + 0.080, -0.006),
   ]);
 }
 
 function buildShin() {
   return merge([
-    capsule(0.066, Math.max(0.02, LEN.shin - 0.132), 0, 0, 0),
-    box(0.118, 0.102, 0.104, 0.032, 0, -HALF.shin + 0.055, -0.030),
-    box(0.112, 0.200, 0.108, 0.032, 0, -0.048, -0.014),
+    capsule(0.058, Math.max(0.02, LEN.shin - 0.116), 0, 0, 0),
+    box(0.102, 0.094, 0.094, 0.029, 0, -HALF.shin + 0.052, -0.026),
+    box(0.098, 0.192, 0.096, 0.029, 0, -0.048, -0.012),
   ]);
 }
 
@@ -246,8 +259,11 @@ export class BodyRenderer {
       color: 0x16222e, scale: 1, roughness: 0.16,
       emissive: 0x37a0ff, emissiveIntensity: 2.4,
     });
+    // Deliberately rough and dark: at roughness 0.44 with full metalness the
+    // receiver caught the sun and clipped to pure white, and the bloom
+    // threshold then turned a rifle into a lens flare.
     const gun = Materials.get('metal', {
-      color: 0x3b4149, scale: 1, roughness: 0.44, metalness: 1.0,
+      color: 0x2e333a, scale: 1, roughness: 0.66, metalness: 0.8,
     });
     this.materials = { armor, suit, visor, gun };
   }
