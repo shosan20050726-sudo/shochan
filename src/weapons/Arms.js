@@ -1,24 +1,20 @@
 import * as THREE from 'three';
-import { palette, boxGeo, cylGeo, sphereGeo } from './Parts.js';
+import { boxGeo, cylGeo, sphereGeo } from './Parts.js';
 import Materials from '../materials/MaterialLibrary.js';
 
 /**
  * First-person arms.
  *
- * Built procedurally and parented to the viewmodel rig, so they inherit the
- * gun's sway, bob, recoil and reload animation for free rather than needing a
- * second animation system kept in sync with the first.
+ * Built procedurally and parented to the viewmodel, so they inherit the gun's
+ * sway, bob, recoil and reload animation for free rather than needing a second
+ * animation system kept in sync with the first.
  *
- * Hand placement is derived from the weapon definition rather than hardcoded:
- * the trigger hand sits behind and below the receiver at the grip, the support
- * hand forward on the handguard, scaled by the weapon's own barrel and
- * receiver lengths. A shotgun's support hand therefore lands on its pump and a
- * marksman rifle's much further forward, without per-weapon tuning.
+ * Hands are placed from the viewmodel's own `eject` and `muzzle` anchors —
+ * real model-space points on the geometry that exists — rather than from the
+ * definition's nominal barrel and receiver lengths. The support hand therefore
+ * lands on the handguard of every weapon in the roster, correctly further
+ * forward on a long one, with no per-weapon tuning.
  */
-
-const GLOVE = 0x2a2e34;
-const SLEEVE = 0x3f4650;
-const SKIN = 0x8a5f43;
 
 /**
  * One arm, built at the origin with the hand AT the origin.
@@ -82,7 +78,6 @@ function buildArm(mats, side, opts = {}) {
  * @returns {{group:THREE.Group, left:THREE.Group, right:THREE.Group}}
  */
 export function buildArms(vm, def) {
-  const p = palette(def.model?.tint || {});
   // The shared grip material sits near black, which is why the hand read as a
   // void rather than an object: nothing physical, not black nitrile and not
   // black leather, sits that dark under this much bounce light. These are
