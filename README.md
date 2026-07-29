@@ -77,9 +77,27 @@ node tools/whatishit.mjs        # names the mesh filling a screen region
 node tools/uniprobe.mjs         # names a material that throws on uniform upload
 node tools/geomcheck.mjs        # finds non-finite vertices
 node tools/vmprobe.mjs          # viewmodel anchor points and bounding boxes
+node tools/aoprobe.mjs          # reads the AO target back and reports its pixel range
 ```
 
-Two traps these were built to catch, both of which caused real misdiagnoses:
+**Measure the buffer, not the picture.** Ambient occlusion took three attempts
+because every judgement was made by looking at frames. It was diagnosed as a
+tuning problem, then — after cranking intensity and radius produced no visible
+change — as a broken composite, then as a binding failure. All of that was
+wrong. `node tools/aoprobe.mjs` reads the AO target back and reports its actual
+pixel range, and answered it in one run: the buffer held real occlusion, the
+uniform was bound to it, and the compiled program had `tAO`. AO was working and
+merely far too subtle, at roughly six percent darkening.
+
+The two "no visible change" experiments that misled the middle diagnosis were
+not evidence of anything — they were badly designed. Raising the SSAO
+intensity uniform still gets mixed back toward white by the composite, so the
+net change stays small; and writing raw non-linear depth into the AO buffer
+writes values very close to 1.0, which is nearly the same white it was
+replacing. A subtle effect cannot be A/B'd by eye. Read the numbers.
+
+Two further traps these were built to catch, both of which caused real
+misdiagnoses:
 
 - A frozen image does **not** mean the loop died, and a live loop does **not**
   mean there are no errors. The engine catches per-frame exceptions and keeps
@@ -96,26 +114,10 @@ Two traps these were built to catch, both of which caused real misdiagnoses:
   each been ruled out by measurement; the evidence points at the sky and
   atmosphere shaders. Unresolved.
 
-- **No ambient occlusion reaches the frame**, so nothing darkens at a concave
-  junction or where an object meets the ground.
-
-  What is established, in increasing order of strength. Tuning is not the
-  problem: `node tools/diag.mjs l-ssaomax` pushes intensity and radius far
-  past any sane value and the frame is unchanged. The tint is not the problem
-  either: `n-aoblack` forces the AO colour to pure black, which would turn
-  every occluded pixel black, and nothing darkens.
-
-  The decisive one: temporarily rewriting the SSAO shader to output raw depth
-  instead of occlusion — arbitrary, obviously different content in the AO
-  buffer — *also* changes nothing. So the AO result is not reaching the
-  composite at all, and the fault is in the binding or the pass wiring rather
-  than in the SSAO shader's occlusion maths.
-
-  Note that a reading of the code alone suggested the opposite, and it was
-  wrong: `tAO` is bound to the AO target, `USE_AO` is present in the aerial
-  pass's defines, that pass always runs, and every uniform the SSAO shader
-  declares is supplied and kept updated. All of that is true and none of it
-  saves the result. Start from the buffer-content experiment, not the source.
+- Ambient occlusion was present all along but tuned so weakly it could not be
+  seen, which a reviewer reasonably read as "there is no AO anywhere". Now
+  strengthened; see the note below, which is worth reading before trusting any
+  visual A/B on a subtle effect.
 - The first-person hands are placed correctly but still read as dark masses
   rather than gloved hands.
 - Middle-ground set dressing between points of interest is sparse: no roads

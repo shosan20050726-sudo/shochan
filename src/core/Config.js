@@ -126,8 +126,15 @@ export const CFG = {
     viewmodelFill: 0.10,
     viewmodelRim: 0.18,
     viewmodelEnvIntensity: 0.45,
-    ssaoRadius: 0.55,
-    ssaoIntensity: 0.9,
+    // Contact darkening was present but far too weak to see: the AO buffer
+    // averaged 0.90 and the tint sat at 0.40/0.47/0.62, which works out to
+    // about six percent darkening at a wall-to-ground junction. Strengthened
+    // until the junction actually reads, with a wider radius so the effect
+    // covers architectural corners rather than only tight creases.
+    ssaoRadius: 0.95,
+    ssaoIntensity: 2.3,
+    ssaoPower: 1.25,
+    aoColor: [0.16, 0.20, 0.30],
     motionBlurStrength: 0.42,
     vignette: 0.32,
     chromaticAberration: 0.0016,
