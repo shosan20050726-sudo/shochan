@@ -19,6 +19,16 @@ const POSE = { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 };
 /** Each variant mutates the live scene, then we shoot the identical pose. */
 const VARIANTS = [
   ['a-baseline', () => {}],
+  ['n-aoblack', () => {
+    // Force the AO tint to pure black and crank the term. If creases go black,
+    // the AO buffer has content and the effect was merely too subtle to see.
+    // If the frame is unchanged, SSAO is returning "unoccluded" everywhere and
+    // the fault is upstream of the composite.
+    const pf = window.__ENGINE.get('postfx');
+    pf.aerialPass.material.uniforms.uAOColor.value.set(0, 0, 0);
+    const u = pf.ssaoMat?.uniforms;
+    if (u) { u.uIntensity.value = 4; u.uRadius.value = 1.2; u.uPower.value = 1.0; }
+  }],
   ['m-noring', () => {
     // The ring wall only exists once a match stage fires. Hiding it separates
     // "the atmosphere is washed out" from "a translucent wall fills the view".

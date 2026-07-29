@@ -95,6 +95,18 @@ Two traps these were built to catch, both of which caused real misdiagnoses:
   VFX, post compositing, non-finite geometry and ordinary scene geometry have
   each been ruled out by measurement; the evidence points at the sky and
   atmosphere shaders. Unresolved.
+
+- **No ambient occlusion reaches the frame**, so nothing darkens at a concave
+  junction or where an object meets the ground. SSAO is enabled and its whole
+  composite path is verified working — `tAO` is bound, `USE_AO` is defined, the
+  aerial pass that applies it always runs, and the tint is a dark blue rather
+  than white. `node tools/diag.mjs n-aoblack` forces that tint to pure black
+  and raises the term: the frame does not darken anywhere. `l-ssaomax` cranks
+  intensity and radius far past any sane value with the same result. So the
+  SSAO pass is returning "unoccluded" everywhere and the fault is inside the
+  SSAO shader or its depth reconstruction, not in tuning, not in the blend,
+  and not in the uniforms — every uniform the shader declares is supplied and
+  updated. That is where to start.
 - The first-person hands are placed correctly but still read as dark masses
   rather than gloved hands.
 - Middle-ground set dressing between points of interest is sparse: no roads
