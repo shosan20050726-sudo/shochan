@@ -19,6 +19,13 @@ const POSE = { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 };
 /** Each variant mutates the live scene, then we shoot the identical pose. */
 const VARIANTS = [
   ['a-baseline', () => {}],
+  ['m-noring', () => {
+    // The ring wall only exists once a match stage fires. Hiding it separates
+    // "the atmosphere is washed out" from "a translucent wall fills the view".
+    window.__ENGINE.scene.traverse((o) => {
+      if (String(o.name).includes('ringwall')) o.visible = false;
+    });
+  }],
   ['b-noshadow', () => {
     // Kill every shadow-casting light, CSM cascades included.
     window.__ENGINE.scene.traverse((o) => { if (o.isLight) o.castShadow = false; });
@@ -49,6 +56,14 @@ const VARIANTS = [
     window.__ENGINE.scene.traverse((o) => {
       if (o.name === 'vfx:motes' || String(o.name).startsWith('vfx:')) o.visible = false;
     });
+  }],
+  ['l-ssaomax', () => {
+    // Crank AO far past any sane value. If the frame is unchanged, the AO
+    // buffer is not reaching the composite and this is plumbing, not tuning.
+    const pf = window.__ENGINE.get('postfx');
+    const u = pf?.ssaoMat?.uniforms;
+    if (u) { u.uIntensity.value = 8; u.uRadius.value = 3.0; u.uPower.value = 1.0; }
+    window.__PROBE_SSAO = !!u;
   }],
   ['c-noenv', () => { window.__ENGINE.scene.environment = null; }],
   ['d-nofog', () => { window.__ENGINE.scene.fog = null; }],

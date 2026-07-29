@@ -76,10 +76,14 @@ export const VCFG = {
     height: p(V.ring?.height, CFG.ring?.height ?? 260),
     segments: p(V.ring?.segments, 128),
     rings: p(V.ring?.rings, 22),
-    // At full opacity the wall behaves like a fog bank: it sits between the
-    // camera and the map and flattens the aerial perspective behind it. It
-    // should read as an energy curtain you can see the world through.
-    opacity: p(V.ring?.opacity, 0.42),
+    // The wall stands 260 m tall so it cannot be jumped, which means from
+    // anywhere inside the ring it spans the entire horizon and most of the
+    // sky. At 0.42 that was enough to wash the whole map to a white haze and
+    // flatten the aerial perspective behind it — hiding the wall turned an
+    // apparently broken atmosphere back into a clear blue one. It has to stay
+    // legible as a boundary while still being something you see the world
+    // through, so it runs low and leans on its scrolling filaments to read.
+    opacity: p(V.ring?.opacity, 0.19),
     colorA: p(V.ring?.colorA, 0x4a1a7a),        // deep violet body
     colorB: p(V.ring?.colorB, 0xff37c8),        // hot magenta filaments
     colorC: p(V.ring?.colorC, 0x9ce8ff),        // cyan-white hot core
