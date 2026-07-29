@@ -8,6 +8,7 @@ import buildViewmodel from './Frames.js';
 import ViewmodelRig from './ViewmodelRig.js';
 import { MuzzleFlash, ShellPool } from './MuzzleFX.js';
 import { palette } from './Parts.js';
+import buildArms from './Arms.js';
 import { clamp01 } from './MathKit.js';
 
 /**
@@ -72,7 +73,12 @@ export default class WeaponSystem {
     for (const id of DEFAULT_LOADOUT) {
       const def = WEAPONS[id];
       if (!def) continue;
-      this.slots.push({ def, vm: buildViewmodel(def), mag: def.magSize, reserve: def.reserve });
+      const vm = buildViewmodel(def);
+      // Arms parent to the weapon, so they inherit its sway, bob, recoil and
+      // reload animation instead of needing a second rig kept in sync.
+      vm.arms = buildArms(vm, def);
+      vm.root.add(vm.arms.group);
+      this.slots.push({ def, vm, mag: def.magSize, reserve: def.reserve });
     }
     if (!this.slots.length) return;
 
