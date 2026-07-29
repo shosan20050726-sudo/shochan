@@ -355,12 +355,46 @@ export default class WeaponSystem {
     this.flash?.update(dt);
     this.shells?.update(dt);
 
+    this._updateViewmodelShade(dt, ctx, player);
+
     // ADS narrows the world FOV; the rig owns the gun pose itself.
     const def = this.weapon?.def;
     if (def && player?.setFovScale) {
       const t = this.rig.ads ?? 0;
       player.setFovScale(1 + (CFG.camera.adsFovScale * (def.adsFovMul ?? 1) - 1) * t);
     }
+  }
+
+  /**
+   * Dim the viewmodel when its owner is standing in shadow.
+   *
+   * The viewmodel lights track the sun's colour and direction but have no
+   * occlusion term of their own, so without this the weapon stays fully lit
+   * indoors and in shade — which reads as the gun being lit by a rig bolted
+   * to the camera rather than by the world. Raycasting toward the sun is
+   * cheap enough at a few times a second, and the result is smoothed so
+   * walking past a doorway does not strobe the gun.
+   */
+  _updateViewmodelShade(dt, ctx, player) {
+    const lighting = ctx.engine.get('postfx')?.lighting;
+    if (!lighting?.setViewmodelShade) return;
+
+    this._shadeTimer = (this._shadeTimer ?? 0) - dt;
+    if (this._shadeTimer <= 0) {
+      this._shadeTimer = 0.12;
+      const sun = ctx.engine.get('postfx')?.sky?.sunDirection;
+      const world = ctx.engine.get('world');
+      if (sun && world?.raycast) {
+        _origin.copy(player?.eyePosition ?? ctx.camera.position);
+        _origin.y += 0.1;
+        this._shadeTarget = world.raycast(_origin, _tmp.copy(sun), 60) ? 0 : 1;
+      } else {
+        this._shadeTarget = 1;
+      }
+    }
+    const target = this._shadeTarget ?? 1;
+    this._shade = (this._shade ?? target) + (target - (this._shade ?? target)) * Math.min(1, dt * 5);
+    lighting.setViewmodelShade(this._shade);
   }
 
   /** Ammo readout for the HUD. */

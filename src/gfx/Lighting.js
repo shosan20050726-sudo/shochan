@@ -138,6 +138,24 @@ export default class LightingRig {
     this.vmRim = mk('gfx:vm-rim', base * (g.viewmodelRim ?? 0.45), 0xffe6c4);
   }
 
+  /**
+   * How much direct sun the player is standing in, 0..1.
+   *
+   * The viewmodel rig already tracks the sun's colour and direction, but it
+   * had no occlusion term, so the weapon stayed fully lit while its owner
+   * stood in a shadow. Whoever supplies this (the weapon system, which knows
+   * the player's position) can raycast toward the sun and pass the result.
+   */
+  setViewmodelShade(t) {
+    const g = this.cfg;
+    const base = g.sunIntensity ?? 6.4;
+    const s = Math.max(0, Math.min(1, t));
+    if (this.vmKey) this.vmKey.intensity = base * (g.viewmodelKey ?? 0.34) * (0.18 + 0.82 * s);
+    if (this.vmRim) this.vmRim.intensity = base * (g.viewmodelRim ?? 0.18) * (0.25 + 0.75 * s);
+    // Fill comes from the sky, so it barely changes when the sun is blocked.
+    if (this.vmFill) this.vmFill.intensity = base * (g.viewmodelFill ?? 0.10) * (0.85 + 0.15 * s);
+  }
+
   /** Push the current sun direction/colour into every light + shadow camera. */
   applySun() {
     if (!this.csm) return;

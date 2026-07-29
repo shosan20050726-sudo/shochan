@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { palette, boxGeo, cylGeo, sphereGeo } from './Parts.js';
+import Materials from '../materials/MaterialLibrary.js';
 
 /**
  * First-person arms.
@@ -82,10 +83,14 @@ function buildArm(mats, side, opts = {}) {
  */
 export function buildArms(vm, def) {
   const p = palette(def.model?.tint || {});
+  // The shared grip material sits near black, which is why the hand read as a
+  // void rather than an object: nothing physical, not black nitrile and not
+  // black leather, sits that dark under this much bounce light. These are
+  // dedicated, lighter materials so the glove reads as a surface.
   const mats = {
-    glove: p.grip,
-    sleeve: p.poly,
-    skin: p.wood,          // warm, rough — closest match in the shared palette
+    glove: Materials.get('rubber', { color: 0x6e737b, scale: 2.4, roughness: 0.82 }),
+    sleeve: Materials.get('plastic', { color: 0x555c66, scale: 1.8, roughness: 0.74 }),
+    skin: Materials.get('flesh', { color: 0xb08056, scale: 2.0, roughness: 0.68 }),
   };
 
   const group = new THREE.Group();
