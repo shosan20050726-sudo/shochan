@@ -116,8 +116,8 @@ misdiagnoses:
 
 - Ambient occlusion was present all along but tuned so weakly it could not be
   seen, which a reviewer reasonably read as "there is no AO anywhere". Now
-  strengthened; see the note below, which is worth reading before trusting any
-  visual A/B on a subtle effect.
+  strengthened. See "Measure the buffer, not the picture" above before
+  trusting any visual A/B on a subtle effect.
 - The first-person hands are placed correctly but still read as dark masses
   rather than gloved hands.
 - Middle-ground set dressing between points of interest is sparse: no roads
