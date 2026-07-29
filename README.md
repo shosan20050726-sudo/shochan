@@ -97,16 +97,25 @@ Two traps these were built to catch, both of which caused real misdiagnoses:
   atmosphere shaders. Unresolved.
 
 - **No ambient occlusion reaches the frame**, so nothing darkens at a concave
-  junction or where an object meets the ground. SSAO is enabled and its whole
-  composite path is verified working — `tAO` is bound, `USE_AO` is defined, the
-  aerial pass that applies it always runs, and the tint is a dark blue rather
-  than white. `node tools/diag.mjs n-aoblack` forces that tint to pure black
-  and raises the term: the frame does not darken anywhere. `l-ssaomax` cranks
-  intensity and radius far past any sane value with the same result. So the
-  SSAO pass is returning "unoccluded" everywhere and the fault is inside the
-  SSAO shader or its depth reconstruction, not in tuning, not in the blend,
-  and not in the uniforms — every uniform the shader declares is supplied and
-  updated. That is where to start.
+  junction or where an object meets the ground.
+
+  What is established, in increasing order of strength. Tuning is not the
+  problem: `node tools/diag.mjs l-ssaomax` pushes intensity and radius far
+  past any sane value and the frame is unchanged. The tint is not the problem
+  either: `n-aoblack` forces the AO colour to pure black, which would turn
+  every occluded pixel black, and nothing darkens.
+
+  The decisive one: temporarily rewriting the SSAO shader to output raw depth
+  instead of occlusion — arbitrary, obviously different content in the AO
+  buffer — *also* changes nothing. So the AO result is not reaching the
+  composite at all, and the fault is in the binding or the pass wiring rather
+  than in the SSAO shader's occlusion maths.
+
+  Note that a reading of the code alone suggested the opposite, and it was
+  wrong: `tAO` is bound to the AO target, `USE_AO` is present in the aerial
+  pass's defines, that pass always runs, and every uniform the SSAO shader
+  declares is supplied and kept updated. All of that is true and none of it
+  saves the result. Start from the buffer-content experiment, not the source.
 - The first-person hands are placed correctly but still read as dark masses
   rather than gloved hands.
 - Middle-ground set dressing between points of interest is sparse: no roads
