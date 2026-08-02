@@ -80,21 +80,27 @@ node tools/vmprobe.mjs          # viewmodel anchor points and bounding boxes
 node tools/aoprobe.mjs          # reads the AO target back and reports its pixel range
 ```
 
-**Measure the buffer, not the picture.** Ambient occlusion took three attempts
-because every judgement was made by looking at frames. It was diagnosed as a
-tuning problem, then — after cranking intensity and radius produced no visible
-change — as a broken composite, then as a binding failure. All of that was
-wrong. `node tools/aoprobe.mjs` reads the AO target back and reports its actual
-pixel range, and answered it in one run: the buffer held real occlusion, the
-uniform was bound to it, and the compiled program had `tAO`. AO was working and
-merely far too subtle, at roughly six percent darkening.
+**Measure the buffer, and make test signals unmissable.** Ambient occlusion was
+misdiagnosed three times, and every wrong turn came from judging a subtle
+effect by eye. It was called a tuning problem, then a broken composite, then a
+binding failure. Two things settled it.
 
-The two "no visible change" experiments that misled the middle diagnosis were
-not evidence of anything — they were badly designed. Raising the SSAO
-intensity uniform still gets mixed back toward white by the composite, so the
-net change stays small; and writing raw non-linear depth into the AO buffer
-writes values very close to 1.0, which is nearly the same white it was
-replacing. A subtle effect cannot be A/B'd by eye. Read the numbers.
+`node tools/aoprobe.mjs` reads the AO target back and reports its pixel range,
+which showed in one run that the buffer held real occlusion and the uniform was
+bound to it. And forcing the SSAO shader to output pure black darkens the whole
+frame dramatically, which proves the buffer reaches the composite.
+
+Both earlier "no visible change" experiments were worthless, and it is worth
+knowing why. Raising the SSAO intensity uniform gets mixed back toward white by
+the composite, so the net change stays small. Writing raw non-linear depth into
+the AO buffer writes values very close to 1.0 — nearly the same white it
+replaced. Neither produced a signal large enough to see, and both were read as
+"the effect does not reach the frame". Design the test so a positive result is
+impossible to miss.
+
+The actual problem was radius. SSAO radius is in world metres, so its screen
+footprint shrinks with distance: at 0.95 m a wall thirty metres away got a
+one-pixel line at its base rather than a readable gradient.
 
 Two further traps these were built to catch, both of which caused real
 misdiagnoses:

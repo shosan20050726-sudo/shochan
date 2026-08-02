@@ -131,7 +131,10 @@ export const CFG = {
     // about six percent darkening at a wall-to-ground junction. Strengthened
     // until the junction actually reads, with a wider radius so the effect
     // covers architectural corners rather than only tight creases.
-    ssaoRadius: 0.95,
+    // Radius is in world metres, so its screen footprint shrinks with
+    // distance: at 0.95 a wall thirty metres away got a one-pixel line at its
+    // base instead of a readable gradient, which reads as no occlusion at all.
+    ssaoRadius: 1.7,
     ssaoIntensity: 2.3,
     ssaoPower: 1.25,
     aoColor: [0.16, 0.20, 0.30],
