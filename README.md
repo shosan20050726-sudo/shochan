@@ -109,11 +109,6 @@ misdiagnoses:
 
 ## Known issues
 
-- A large straight-edged discontinuity is visible across wide shots. Shadows,
-  VFX, post compositing, non-finite geometry and ordinary scene geometry have
-  each been ruled out by measurement; the evidence points at the sky and
-  atmosphere shaders. Unresolved.
-
 - Ambient occlusion was present all along but tuned so weakly it could not be
   seen, which a reviewer reasonably read as "there is no AO anywhere". Now
   strengthened. See "Measure the buffer, not the picture" above before

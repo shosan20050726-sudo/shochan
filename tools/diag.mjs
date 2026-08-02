@@ -19,6 +19,29 @@ const POSE = { pos: [118, 66, 128], look: [10, 6, -40], fov: 68 };
 /** Each variant mutates the live scene, then we shoot the identical pose. */
 const VARIANTS = [
   ['a-baseline', () => {}],
+  ['p-skyfirst', () => {
+    // The dome is drawn after opaques and relies on depth rejection to stay
+    // behind them. Draw it first with depth testing off instead, which is the
+    // classic skybox order and cannot cover geometry regardless of how its
+    // depth ends up.
+    window.__ENGINE.scene.traverse((o) => {
+      if (String(o.name).toLowerCase().includes('skydome')) {
+        o.renderOrder = -10000;
+        o.material.depthTest = false;
+        o.material.depthWrite = false;
+        o.material.needsUpdate = true;
+      }
+    });
+  }],
+  ['o-nosky', () => {
+    // The wedge survives bypassing post, so it is in the raw scene render.
+    // The sky dome is the one thing in that render never yet removed on its
+    // own. If the wedge goes with it, the dome shader is the culprit.
+    window.__ENGINE.scene.traverse((o) => {
+      if (o.material && o.material.name === 'gfx.sky') o.visible = false;
+      if (String(o.name).toLowerCase().includes('sky')) o.visible = false;
+    });
+  }],
   ['n-aoblack', () => {
     // Force the AO tint to pure black and crank the term. If creases go black,
     // the AO buffer has content and the effect was merely too subtle to see.

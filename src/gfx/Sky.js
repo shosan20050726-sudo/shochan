@@ -388,7 +388,9 @@ export default class Sky {
       vertexShader: SKY_VERTEX,
       fragmentShader: DOME_FRAGMENT,
       side: THREE.BackSide,
-      depthTest: true,
+      // Drawn first with no depth test at all (see renderOrder below), so it
+      // simply fills the buffer and everything else lands on top of it.
+      depthTest: false,
       depthWrite: false,
       fog: false,
       toneMapped: false,
@@ -400,7 +402,18 @@ export default class Sky {
     this.mesh = new THREE.Mesh(this._geometry, this.domeMaterial);
     this.mesh.name = 'gfx:skydome';
     this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 900;      // after opaques -> early-z rejects it
+    // Draw before everything else rather than after.
+    //
+    // The previous order was the opposite: draw after opaques, pin depth to
+    // the far plane in the vertex shader, and let depth rejection keep the
+    // dome behind the world. That leaked. The dome is a 2x2x2 box anchored to
+    // the camera, so its triangles straddle the near plane and get clipped,
+    // and the clip boundaries showed up as a large straight-edged wedge of sky
+    // painted over the terrain — the artifact that survived ruling out
+    // shadows, VFX, post compositing, non-finite geometry, and the baked sky
+    // cubemap. Drawing first with depth testing off cannot cover geometry no
+    // matter what its depth works out to.
+    this.mesh.renderOrder = -10000;
     this.mesh.matrixAutoUpdate = false;
 
     this._bakeMesh = new THREE.Mesh(this._geometry, this.bakeMaterial);
